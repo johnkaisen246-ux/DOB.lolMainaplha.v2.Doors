@@ -1,0 +1,201 @@
+            local targetSpeed = math.clamp(_G.SpeedValue, 16, 28)
+            local diff = targetSpeed - 16
+            if diff > 0 then
+                local displacement = Humanoid.MoveDirection * (diff * dt * 0.9)
+                RootPart.CFrame = RootPart.CFrame + displacement
+            end
+        end
+    end
+end)
+
+game:GetService("ProximityPromptService").PromptShown:Connect(function(prompt)
+    if _G.InstantInteract then
+        prompt.HoldDuration = 0
+    end
+
+    local parentName = prompt.Parent and prompt.Parent.Name:lower() or ""
+    local objText = prompt.ObjectText:lower()
+    
+    if _G.AutoBuyCrucifix and (parentName:find("crucifix") or objText:find("crucifix")) then
+        fireproximityprompt(prompt)
+    elseif _G.AutoBuySkeletonKey and (parentName:find("skeleton") or objText:find("skeleton")) then
+        fireproximityprompt(prompt)
+    elseif _G.AutoBuyFlashlight and (parentName:find("flashlight") or objText:find("flashlight")) then
+        fireproximityprompt(prompt)
+    elseif _G.AutoBuyVitamins and (parentName:find("vitamin") or objText:find("vitamin")) then
+        fireproximityprompt(prompt)
+    end
+end)
+
+- Entity Notifier & Tracker 
+local TrackedAlerts = {}
+local function CheckEntityAlert(child)
+    if not _G.EntityNotifier or not child or not child.Name then return end
+    local nameL = child.Name:lower()
+    
+    if nameL:find("mesh") or nameL:find("cube") or nameL:find("fake") then return end
+    if TrackedAlerts[child] then return end
+
+    if nameL:find("eyes") then
+        TrackedAlerts[child] = true
+        Library:Notify("👁️ EYES PARTICLES COMING — DO NOT LOOK!")
+        return
+    end
+
+    local dangerousEntities = {"rush", "ambush", "glitch", "a-60", "a-120", "screech", "dread"}
+    for _, entityName in pairs(dangerousEntities) do
+        if nameL:find(entityName) then
+            TrackedAlerts[child] = true
+            Library:Notify("⚠️ WARNING: " .. child.Name:upper() .. " IS COMING — HIDE!")
+            break
+        end
+    end
+end
+
+Workspace.ChildAdded:Connect(CheckEntityAlert)
+Workspace.DescendantAdded:Connect(CheckEntityAlert)
+
+- Entity Key Cubby & Object Scanners Loop
+task.spawn(function()
+    while task.wait(0.4) do
+        local currentFloorFolder = workspace:FindFirstChild("CurrentRooms") or workspace:FindFirstChild("Rooms") or workspace:FindFirstChild("SubFloors")
+        
+        if currentFloorFolder then
+            for _, room in pairs(currentFloorFolder:GetChildren()) do
+                if _G.DoorESP then
+                    local doorGroup = room:FindFirstChild("Door") or room:FindFirstChild("RetroDoor")
+                    if doorGroup then
+                        local doorPart = doorGroup:FindFirstChild("Door") or doorGroup:FindFirstChild("Panel") or doorGroup:FindFirstChildOfClass("BasePart")
+                        if doorPart then ApplyDobESP(doorPart, "Door " .. room.Name, DoorColor) end
+                    end
+                end
+
+                for _, v in pairs(room:GetDescendants()) do
+                    local nameL = v.Name:lower()
+                    CheckEntityAlert(v)
+
+                    if _G.KeyESP and (nameL:find("key") or nameL:find("padlock") or v.Name == "KeyObtain") then
+                        local targetPart = v:IsA("Model") and (v.PrimaryPart or v:FindFirstChildOfClass("BasePart")) or v
+                        if targetPart and targetPart:IsA("BasePart") then
+                            ApplyDobESP(targetPart, "Key", KeyColor)
+                        end
+                    end
+
+                    if _G.CubbyESP and (nameL:find("cubby") or nameL:find("hideable")) then
+                        local targetPart = v:IsA("Model") and (v.PrimaryPart or v:FindFirstChildOfClass("BasePart")) or v
+                        if targetPart and targetPart:IsA("BasePart") then
+                            ApplyDobESP(targetPart, "Cubby", CubbyColor)
+                        end
+                    end
+
+                    if _G.ScribblesESP and nameL:find("scribble") then ApplyDobESP(v, "Scribbles", SpecialEntityColor) end
+                    if _G.TellerESP and nameL:find("teller") then ApplyDobESP(v, "Teller", SpecialEntityColor) end
+                    if _G.CreakESP and nameL:find("creak") then ApplyDobESP(v, "Creak", SpecialEntityColor) end
+                    if _G.StemESP and nameL:find("stem") then ApplyDobESP(v, "Stem", SpecialEntityColor) end
+                    if _G.NoiseESP and nameL:find("noise") then ApplyDobESP(v, "Noise", SpecialEntityColor) end
+                    if _G.FireAlarmESP and nameL:find("firealarm") then ApplyDobESP(v, "Fire Alarm", ItemColor) end
+                    if _G.NoiseTVESP and nameL:find("television") then ApplyDobESP(v, "Noise TV", ItemColor) end
+                    if _G.HonchoESP and nameL:find("honcho") then ApplyDobESP(v, "Honcho Package", ItemColor) end
+                end
+            end
+        end
+
+        if _G.AutoClearClosets then
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("Model") and (v.Name == "Wardrobe" or v.Name == "Closet") then
+                    local prompt = v:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if prompt then fireproximityprompt(prompt) task.wait(0.1) end
+                end
+            end
+        end
+
+        if _G.AutoWaterHeal and lp.Character and lp.Character:FindFirstChild("Humanoid") then
+            if lp.Character.Humanoid.Health < 60 then
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v.Name:lower():find("watercooler") then
+                        local p = v:FindFirstChildWhichIsA("ProximityPrompt", true)
+                        if p then fireproximityprompt(p) end
+                    end
+                end
+            end
+        end
+
+        if _G.AutoGiveTicket then
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v.Name:lower():find("teller") then
+                    local p = v:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if p then fireproximityprompt(p) end
+                end
+            end
+        end
+
+        if _G.AutoKickFence then
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v.Name:lower():find("fencedoor") or v.Name:lower():find("fence") then
+                    local p = v:FindFirstChildWhichIsA("ProximityPrompt", true)
+                    if p then fireproximityprompt(p) end
+                end
+            end
+        end
+    end
+end)
+
+- UI Toggles 
+LeftCoreBox:AddToggle("EntityNotifierToggle", {Text = "Entity Notifier (Alerts)", Default = true, Callback = function(v) _G.EntityNotifier = v end})
+LeftCoreBox:AddToggle("InstantInteractToggle", {Text = "Instant Interact (No Hold)", Default = false, Callback = function(v) _G.InstantInteract = v end})
+LeftCoreBox:AddToggle("AutoClearClosets", {Text = "Auto Clear Closets", Default = false, Callback = function(v) _G.AutoClearClosets = v end})
+LeftCoreBox:AddToggle("AutoWaterHeal", {Text = "Auto Water Cooler Heal", Default = false, Callback = function(v) _G.AutoWaterHeal = v end})
+LeftCoreBox:AddToggle("AutoGiveTicket", {Text = "Auto Give Ticket", Default = false, Callback = function(v) _G.AutoGiveTicket = v end})
+LeftCoreBox:AddToggle("AutoSkipGate", {Text = "Auto Skip Gate Puzzles", Default = false, Callback = function(v) _G.AutoSkipGate = v end})
+LeftCoreBox:AddToggle("AutoKickFence", {Text = "Auto Kick Fence Doors", Default = false, Callback = function(v) _G.AutoKickFence = v end})
+
+RightCoreBox:AddToggle("AutoBuyCruc", {Text = "Auto Buy Crucifix", Default = false, Callback = function(v) _G.AutoBuyCrucifix = v end})
+RightCoreBox:AddToggle("AutoBuySkel", {Text = "Auto Buy Skeleton Key", Default = false, Callback = function(v) _G.AutoBuySkeletonKey = v end})
+RightCoreBox:AddToggle("AutoBuyLight", {Text = "Auto Buy Flashlight", Default = false, Callback = function(v) _G.AutoBuyFlashlight = v end})
+RightCoreBox:AddToggle("AutoBuyVit", {Text = "Auto Buy Vitamins", Default = false, Callback = function(v) _G.AutoBuyVitamins = v end})
+
+RightVisualBox:AddToggle("DoorESPToggle", {Text = "Door ESP", Default = false, Callback = function(v) _G.DoorESP = v end})
+RightVisualBox:AddToggle("KeyESPToggle", {Text = "Key ESP", Default = false, Callback = function(v) _G.KeyESP = v end})
+RightVisualBox:AddToggle("CubbyESPToggle", {Text = "Cubby ESP", Default = false, Callback = function(v) _G.CubbyESP = v end})
+RightVisualBox:AddToggle("HonchoESP", {Text = "Honcho Package ESP", Default = false, Callback = function(v) _G.HonchoESP = v end})
+RightVisualBox:AddToggle("FireAlarmESP", {Text = "Fire Alarm ESP", Default = false, Callback = function(v) _G.FireAlarmESP = v end})
+RightVisualBox:AddToggle("NoiseTVESP", {Text = "Noise TV ESP", Default = false, Callback = function(v) _G.NoiseTVESP = v end})
+
+LeftVisualBox:AddToggle("ScribblesESPToggle", {Text = "Scribbles ESP", Default = false, Callback = function(v) _G.ScribblesESP = v end})
+LeftVisualBox:AddToggle("TellerESPToggle", {Text = "Teller ESP", Default = false, Callback = function(v) _G.TellerESP = v end})
+LeftVisualBox:AddToggle("CreakESPToggle", {Text = "Creak ESP", Default = false, Callback = function(v) _G.CreakESP = v end})
+LeftVisualBox:AddToggle("StemESPToggle", {Text = "Stem ESP", Default = false, Callback = function(v) _G.StemESP = v end})
+LeftVisualBox:AddToggle("NoiseESPToggle", {Text = "Noise ESP", Default = false, Callback = function(v) _G.NoiseESP = v end})
+
+LeftMoveBox:AddToggle("NoClipToggle", {Text = "Noclip", Default = false, Callback = function(v) _G.NoClip = v end})
+LeftMoveBox:AddToggle("FullbrightToggle", {Text = "Fullbright Level", Default = false, Callback = function(v) _G.Fullbright = v end})
+LeftMoveBox:AddToggle("SpeedBypassToggle", {Text = "WalkSpeed Boost", Default = false, Callback = function(v) _G.SpeedBypass = v end})
+LeftMoveBox:AddSlider("SpeedSlider", {Text = "Speed Limit", Min = 16, Max = 28, Default = 22, Round = 0, Compact = false, Callback = function(v) _G.SpeedValue = v end})
+LeftMoveBox:AddToggle("GodModeToggle", {Text = "God Mode (Freemium)", Default = false, Callback = function(v) 
+    _G.GodMode = v 
+    if v then Library:Notify("God Mode enabled") end
+end})
+
+LeftCombatBox:AddToggle("AntiA90Toggle", {Text = "Anti A-90", Default = false, Callback = function(v) _G.AntiA90 = v end})
+LeftCombatBox:AddToggle("BypassA90Toggle", {Text = "Bypass A-90", Default = false, Callback = function(v) _G.BypassA90 = v end})
+LeftCombatBox:AddToggle("ArchiveBypass", {Text = "Archives Anti-Cheat Bypass", Default = false, Callback = function(v) _G.AntiCheatArchives = v end})
+LeftCombatBox:AddToggle("StairwellBypass", {Text = "Stairwell Anti-Cheat Bypass", Default = false, Callback = function(v) _G.AntiCheatStairwell = v end})
+
+-- UI Settings & Theme Configuration
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetFolder("dob.lol_Doors_Extended")
+
+ThemeManager:AddBuildConfigSection(UiSettingsBox)
+SaveManager:BuildConfigSection(UiSettingsBox)
+
+ThemeManager.BuiltInThemes["dobGreen"] = {
+    1,
+    game:GetService("HttpService"):JSONDecode('{"FontColor":"FFFFFF","MainColor":"131318","AccentColor":"00FF00","SelectedTabColor":"1F1F26","BackgroundColor":"0A0A0E","OutlineColor":"262630"}')
+}
+
+ThemeManager:ApplyTheme("dobGreen")
+SaveManager:LoadAutoloadConfig()
+
+Library:Notify("Join my discord server XD https://discord.gg/evEMwyA7D!")
